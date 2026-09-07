@@ -1,5 +1,5 @@
 {
-  "name": "rskel",
+  "name": "bazingo2",
   "private": true,
   "scripts": {
     "build-all": "npm --prefix frontend run build && cargo build --manifest-path backend/Cargo.toml",

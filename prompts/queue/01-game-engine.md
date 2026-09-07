@@ -64,7 +64,7 @@ defined in a future prompt.
 
 ### Type naming
 
-The game board should be a type named BZ_Gameboard. The game piece should be a type named BZ_Gamepiece
+The game board should be a type named BzGameboard. The game piece should be a type named BzGamepiece
 
 ### Set of game pieces
 
@@ -130,12 +130,12 @@ All players will have the same time limit for each turn.
 The game engine does not need to manage time. That will come from a management controller to be
 defined later. The game engine should include these operations:
 
-- Create a new game. The game struct should be named BZ_Game. 
-- BZ_Game should include a randomly ordered Vec of all possible game pieces.
-- BZ_Game should include the number of turns in the game.
-- Create a player. The player struct should be named BZ_Player.
-- The player struct should include a BZ_Gameboard.
-- BZ_Player should also include the turn number of the last turn played
+- Create a new game. The game struct should be named BzGame.
+- BzGame should include a randomly ordered Vec of all possible game pieces.
+- BzGame should include the number of turns in the game.
+- Create a player. The player struct should be named BzPlayer.
+- The player struct should include a BzGameboard.
+- BzPlayer should also include the turn number of the last turn played
 - Compute score for a player's turn given a game board and a turn number
   - Find contiguous blocks
   - compute score for turn
@@ -144,7 +144,7 @@ defined later. The game engine should include these operations:
   - when turn number is 1 more than last turn played, score normally
   - when turn number is more than last turn played + 1, include penalties in the computed score
 - Compute whether a player's move is legal
-  - function will take parameters for BZ_Game, BZ_Player, turn number, and (x, y) placement
+  - function will take parameters for BzGame, BzPlayer, turn number, and (x, y) placement
   - a game piece positioned on the game board at (x, y) that conflicts with any pips, is an error
   - if the game piece fits on the game board at (x, y) compute the resulting game board
 - A game piece that has no pips in the top row can be placed at y = -1

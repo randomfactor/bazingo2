@@ -41,7 +41,7 @@ impl DbPool<LocalDb> {
         let path = std::env::var("SURREALDB_PATH").unwrap_or_else(|_| "./data/surrealdb".to_string());
         let namespace = std::env::var("SURREALDB_NS").unwrap_or_else(|_| "main".to_string());
         let database = std::env::var("SURREALDB_DB").unwrap_or_else(|_| "main".to_string());
-        let username = std::env::var("SURREALDB_USER").unwrap_or_else(|_| "rskel_local".to_string());
+        let username = std::env::var("SURREALDB_USER").unwrap_or_else(|_| "bazingo2_local".to_string());
         let password = std::env::var("SURREALDB_PASS").unwrap_or_else(|_| "local_only_duh".to_string());
 
         Self::new_local_rocksdb(&path, &namespace, &database, &username, &password).await

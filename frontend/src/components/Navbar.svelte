@@ -9,7 +9,7 @@
 
 <nav class="navbar">
   <div class="brand-wrap">
-    <a href="#/" class="brand">rskel</a>
+    <a href="#/" class="brand">bazingo2</a>
   </div>
 
   <div class="nav-links">

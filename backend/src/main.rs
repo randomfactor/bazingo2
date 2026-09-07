@@ -5,6 +5,7 @@ mod auth;
 mod config;
 mod db;
 mod guards;
+pub mod game;
 mod routes;
 
 use rocket::State;
