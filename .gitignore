@@ -1,0 +1,26 @@
+# OS / editor junk
+.DS_Store
+.vscode/
+.idea/
+
+# Rust build output
+**/target/
+
+# Secrets
+.env
+.env.*
+
+# Frontend build output
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Local SurrealDB data
+/backend/data/surrealdb/
+/data/surrealdb/
+
+# Logs
+*.log
+
+# Coverage reports
+lcov.info

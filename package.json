@@ -1,0 +1,8 @@
+{
+  "name": "rskel",
+  "private": true,
+  "scripts": {
+    "build-all": "npm --prefix frontend run build && cargo build --manifest-path backend/Cargo.toml",
+    "dev": "cargo run --manifest-path backend/Cargo.toml"
+  }
+}
