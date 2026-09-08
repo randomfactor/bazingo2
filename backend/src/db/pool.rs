@@ -115,6 +115,19 @@ impl<T: surrealdb::Connection> KVStore for DbPool<T> {
         Ok(())
     }
 
+    async fn list_table(&self, table: &str) -> Result<Vec<Value>> {
+        if table.trim().is_empty() {
+            return Err(Error::InvalidKey("table cannot be empty".to_string()));
+        }
+
+        let mut response = self
+            .inner
+            .query("SELECT VALUE value FROM type::table($table)")
+            .bind(("table", table.to_string()))
+            .await?;
+        Ok(response.take(0)?)
+    }
+
     async fn increment(&self, key: &str, delta: i64) -> Result<i64> {
         if key.trim().is_empty() {
             return Err(Error::InvalidKey("key cannot be empty".to_string()));

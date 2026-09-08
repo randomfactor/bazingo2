@@ -41,6 +41,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[async_trait]
 pub trait KVStore: Send + Sync {
     async fn get(&self, key: &str) -> Result<Option<Value>>;
+    async fn list_table(&self, table: &str) -> Result<Vec<Value>>;
     async fn set(&self, key: &str, value: Value) -> Result<()>;
     async fn increment(&self, key: &str, delta: i64) -> Result<i64>;
 }

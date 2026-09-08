@@ -20,10 +20,11 @@ use auth::google::GoogleOAuthProvider;
 use config::AuthConfig;
 use db::{DbPool, KVStore};
 use routes::auth::{google_callback, google_login, logout};
+use routes::games::{active_games, create_game, game_info, join, make_move, my_game, past_games, players};
 use routes::static_files::{file_server, spa_fallback_catcher};
 use routes::user::me;
 
-type LocalDbPool = DbPool<surrealdb::engine::local::Db>;
+pub(crate) type LocalDbPool = DbPool<surrealdb::engine::local::Db>;
 
 #[derive(Serialize)]
 struct DataResponse {
@@ -120,7 +121,24 @@ async fn rocket() -> _ {
         .manage(auth_config)
         .manage(provider)
         .attach(CORS)
-        .mount("/api", routes![get_data, get_visits, visit, me, options_data])
+        .mount(
+            "/api",
+            routes![
+                get_data,
+                get_visits,
+                visit,
+                me,
+                options_data,
+                active_games,
+                past_games,
+                create_game,
+                game_info,
+                my_game,
+                join,
+                players,
+                make_move
+            ],
+        )
         .mount("/auth", routes![google_login, google_callback, logout])
         .mount("/", file_server())
         .register("/", catchers![spa_fallback_catcher])

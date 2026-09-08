@@ -1,4 +1,4 @@
-#[path = "../src/game/mod.rs"]
+#[path = "../src/game/engine.rs"]
 mod game_engine;
 
 use game_engine::{
