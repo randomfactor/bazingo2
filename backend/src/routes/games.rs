@@ -9,8 +9,7 @@ use rocket::response::status::Custom;
 use rocket::serde::json::Json;
 use rocket::State;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 #[derive(Debug, Deserialize, FromForm)]
 pub struct GameListQuery {
@@ -20,7 +19,7 @@ pub struct GameListQuery {
 
 #[derive(Debug, Deserialize)]
 pub struct MoveRequest {
-    pub turn_number: usize,
+    pub turn_number: i32,
     pub x: i32,
     pub y: i32,
 }
@@ -30,7 +29,7 @@ pub struct ActiveGameResponse {
     pub id: String,
     pub name: String,
     pub starting_time: String,
-    pub current_turn: u32,
+    pub current_turn: i32,
     pub player_count: usize,
 }
 
@@ -61,7 +60,7 @@ pub struct GameInfoResponse {
     pub number_of_turns: u32,
     pub turn_duration: i64,
     pub interim: i64,
-    pub current_turn: u32,
+    pub current_turn: i32,
     pub pieces: Option<Vec<crate::game::BzGamepiece>>,
     pub completed: bool,
 }
@@ -73,6 +72,18 @@ pub struct PlayerStateResponse {
     pub score: i32,
     pub last_turn_played: u32,
     pub gameboard: crate::game::BzGameboard,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MyGameResponse {
+    pub id: String,
+    pub name: String,
+    pub number_of_turns: u32,
+    pub current_turn: i32,
+    pub current_piece: Vec<crate::game::BzGamepiece>,
+    pub gameboard: crate::game::BzGameboard,
+    pub player_turn: u32,
+    pub time_remaining_seconds: i64,
 }
 
 #[get("/games/active?<query..>")]
@@ -175,17 +186,18 @@ pub async fn game_info(
     store: &State<LocalDbPool>,
 ) -> Result<Json<GameInfoResponse>, Status> {
     let game = get_game(store.inner(), id).await.map_err(service_status)?;
-    let in_progress = current_turn(&game, OffsetDateTime::now_utc()).map_err(service_status)? <= game.number_of_turns;
+    let turn_index = current_turn(&game, OffsetDateTime::now_utc()).map_err(service_status)?;
+    let in_progress = turn_index <= game.number_of_turns as i32;
     Ok(Json(GameInfoResponse {
-        id: game.id,
-        name: game.name,
-        starting_time: game.starting_time,
-        ending_time: game.ending_time,
+        id: game.id.clone(),
+        name: game.name.clone(),
+        starting_time: game.starting_time.clone(),
+        ending_time: game.ending_time.clone(),
         number_of_turns: game.number_of_turns,
         turn_duration: game.turn_duration,
         interim: game.interim,
-        current_turn: game.current_turn,
-        pieces: if in_progress { None } else { Some(game.pieces) },
+        current_turn: turn_index,
+        pieces: if in_progress { None } else { Some(game.pieces.clone()) },
         completed: game.completed,
     }))
 }
@@ -194,21 +206,60 @@ pub async fn game_info(
 pub async fn my_game(
     user: AuthenticatedUser,
     store: &State<LocalDbPool>,
-) -> Result<Json<Value>, Status> {
+) -> Result<Json<MyGameResponse>, Status> {
+    let now = OffsetDateTime::now_utc();
     for game in list_games(store.inner()).await.map_err(service_status)? {
         if let Ok(player) = get_player(store.inner(), &game.id, &user.id).await {
-            if !game.completed && services::parse_time(&game.ending_time).map_err(service_status)? > OffsetDateTime::now_utc() {
-                return Ok(Json(json!({
-                    "id": game.id,
-                    "name": game.name,
-                    "starting_time": game.starting_time,
-                    "current_turn": current_turn(&game, OffsetDateTime::now_utc()).map_err(service_status)?,
-                    "score": player.score,
-                })));
+            if !game.completed && services::parse_time(&game.ending_time).map_err(service_status)? > now {
+                let turn_index = current_turn(&game, now).map_err(service_status)?;
+                let current_piece = if turn_index < 0 {
+                    Vec::new()
+                } else {
+                    game.pieces
+                        .get(turn_index as usize)
+                        .cloned()
+                        .map(|piece| vec![piece])
+                        .unwrap_or_default()
+                };
+                let board = if turn_index < 0 {
+                    crate::game::empty_gameboard()
+                } else {
+                    player.gameboard.clone()
+                };
+                let slot = game.turn_duration + game.interim;
+                let time_remaining = if turn_index < 0 {
+                    (services::parse_time(&game.starting_time).map_err(service_status)? - now)
+                        .whole_seconds()
+                        .max(0)
+                } else {
+                    let next_window_start = services::parse_time(&game.starting_time).map_err(service_status)?
+                        + Duration::seconds(((turn_index + 1) as i64) * slot);
+                    (next_window_start - now).whole_seconds().max(0)
+                };
+
+                return Ok(Json(MyGameResponse {
+                    id: game.id,
+                    name: game.name,
+                    number_of_turns: game.number_of_turns,
+                    current_turn: turn_index,
+                    current_piece,
+                    gameboard: board,
+                    player_turn: player.last_turn_played,
+                    time_remaining_seconds: time_remaining,
+                }));
             }
         }
     }
-    Ok(Json(json!({})))
+    Ok(Json(MyGameResponse {
+        id: String::new(),
+        name: String::new(),
+        number_of_turns: 0,
+        current_turn: -1,
+        current_piece: Vec::new(),
+        gameboard: crate::game::empty_gameboard(),
+        player_turn: 0,
+        time_remaining_seconds: 0,
+    }))
 }
 
 #[post("/games/join/<id>")]

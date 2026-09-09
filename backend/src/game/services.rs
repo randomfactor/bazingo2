@@ -194,54 +194,64 @@ pub async fn get_player<S: KVStore>(
     load_json(store, &player_key(game_id, user_id)).await?.ok_or(ServiceError::NotFound)
 }
 
-pub fn current_turn(game: &GameRecord, now: OffsetDateTime) -> Result<u32, ServiceError> {
+pub fn current_turn(game: &GameRecord, now: OffsetDateTime) -> Result<i32, ServiceError> {
     let start = parse_time(&game.starting_time)?;
     let end = parse_time(&game.ending_time)?;
     if now < start {
-        return Ok(0);
+        return Ok(-1);
     }
     if now >= end {
-        return Ok(game.number_of_turns + 1);
+        return Ok(game.number_of_turns as i32);
     }
     let slot = game.turn_duration + game.interim;
-    Ok(((now - start).whole_seconds() / slot).max(0) as u32 + 1)
+    Ok(((now - start).whole_seconds() / slot).max(0) as i32)
 }
 
 pub async fn move_player<S: KVStore>(
     store: &S,
     game_id: &str,
     user_id: &str,
-    turn_number: usize,
+    turn_number: i32,
     x: i32,
     y: i32,
 ) -> Result<PlayerGameRecord, ServiceError> {
     let mut game = get_game(store, game_id).await?;
     let mut player = get_player(store, game_id, user_id).await?;
-    let turn = u32::try_from(turn_number).map_err(|_| ServiceError::Invalid("turn is too large".to_string()))?;
+
+    if turn_number < 0 {
+        return Err(ServiceError::Conflict("turn must be non-negative".to_string()));
+    }
+
     let expected_turn = current_turn(&game, OffsetDateTime::now_utc())?;
-    if expected_turn == 0 {
+    if expected_turn < 0 {
         return Err(ServiceError::Conflict("game has not started".to_string()));
     }
-    if expected_turn > game.number_of_turns {
+    if expected_turn >= game.number_of_turns as i32 {
         return Err(ServiceError::Conflict("game is completed".to_string()));
     }
-    if turn != expected_turn {
+    if turn_number != expected_turn {
         return Err(ServiceError::Conflict("move is not for the current turn".to_string()));
     }
 
+    let engine_turn = turn_number + 1;
     let engine_game = BzGame { pieces: game.pieces.clone(), turns: game.number_of_turns };
     let engine_player = BzPlayer {
         gameboard: player.gameboard.clone(),
         last_turn_played: player.last_turn_played,
     };
-    let board = place_piece(&engine_game, &engine_player, turn, x, y)?;
-    let scored = super::engine::compute_turn_score(&engine_game, &engine_player, turn, board)?;
+    let board = place_piece(&engine_game, &engine_player, engine_turn as u32, x, y)?;
+    let scored = super::engine::compute_turn_score(
+        &engine_game,
+        &engine_player,
+        engine_turn as u32,
+        board,
+    )?;
 
     player.gameboard = scored.gameboard;
     player.score += scored.score;
-    player.last_turn_played = turn;
-    game.current_turn = turn;
-    if turn == game.number_of_turns {
+    player.last_turn_played = turn_number as u32;
+    game.current_turn = turn_number as u32;
+    if game.current_turn == game.number_of_turns {
         game.completed = true;
     }
     save_json(store, &player_key(game_id, user_id), &player).await?;

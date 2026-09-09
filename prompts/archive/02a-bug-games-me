@@ -1,0 +1,24 @@
+/api/games/me should return all needed info for an active player's current turn. this includes
+- the game id
+- the game name
+- the total number of turns in this game
+- the current game turn
+- the current turn game piece
+- this player's active game board at the start of the turn
+- this player's current turn
+- the time remaining until the next turn
+
+If the game has not started (current time before start time), then the turn number 
+is -1, the current turn game piece is empty, and the active game board is all spaces.
+
+The frontend will not send the player's move until the start of the next turn. When
+the backend receive's the player's move, it will compute the new game board, score it
+and remove scored blocks, then indicate success. at that point, the next call to 
+/api/games/me will return the game state for the next turn.
+
+The move for turn N must be sent during turn N+1.
+
+POST to /api/games/move/id should only return success if the move was legal and
+error if the move was not legal. The caller is expected to get an update from 
+/api/games/me shortly thereafter for the player to choose the next move.
+
